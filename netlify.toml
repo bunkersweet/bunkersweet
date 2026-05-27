@@ -37,3 +37,13 @@
   from = "/api/webhook-crypto"
   to = "/.netlify/functions/webhook-crypto"
   status = 200
+
+[[redirects]]
+  from = "/api/order-number"
+  to = "/.netlify/functions/order-number"
+  status = 200
+
+[[redirects]]
+  from = "/api/send-email"
+  to = "/.netlify/functions/send-email"
+  status = 200

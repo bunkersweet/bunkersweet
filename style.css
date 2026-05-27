@@ -397,3 +397,27 @@ textarea { min-height: 90px; resize: vertical; }
 .muted { color: var(--text-dim); font-size: 13px; }
 .spaced { margin-top: 14px; }
 .center { text-align: center; }
+
+/* ----------------------- THANK YOU PAGE ----------------------- */
+.thankyou-page { padding: 60px 20px 40px; }
+.thankyou-graphic { margin-bottom: 24px; }
+.thankyou-circle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 120px; height: 120px; border-radius: 50%;
+  background: linear-gradient(135deg, rgba(201,162,39,.12), rgba(201,162,39,.04));
+  animation: thankyou-pop .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes thankyou-pop {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.thankyou-title {
+  font-family: var(--font-display); font-size: 28px; font-weight: 700;
+  color: var(--gold); margin: 0 0 12px;
+}
+.thankyou-order {
+  font-size: 16px; color: var(--text); margin: 0 0 8px;
+  background: var(--surface); padding: 10px 18px; border-radius: var(--radius-s);
+  display: inline-block; border: 1px solid var(--line);
+}
+.thankyou-msg { max-width: 400px; margin: 12px auto 0; line-height: 1.6; }
