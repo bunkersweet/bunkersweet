@@ -15,6 +15,7 @@
 
 import Stripe from "stripe";
 import { getStore } from "@netlify/blobs";
+import { notifyOrder } from "./_notify.js";
 
 export default async (req) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
@@ -51,6 +52,8 @@ export default async (req) => {
         order.paidAt = new Date().toISOString();
         order.paymentRef = session.id;
         await store.setJSON(orderId, order);
+        // Notifica venditore + cliente che il pagamento è confermato.
+        await notifyOrder(order, "paid").catch((e) => console.warn("notify error", e));
       }
     }
   }

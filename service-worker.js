@@ -10,7 +10,7 @@
 
 // Cambia il numero di versione ogni volta che modifichi i file cacheati.
 // Questo costringe il browser a scaricare di nuovo l'App Shell.
-const CACHE_VERSION = "pcs-v6";
+const CACHE_VERSION = "pcs-v8";
 const CACHE_NAME = `print-custom-store-${CACHE_VERSION}`;
 
 // File che compongono lo "scheletro" dell'app (App Shell).

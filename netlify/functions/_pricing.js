@@ -46,6 +46,21 @@ export async function recomputeCartTotal(cart) {
         pricePerMeter,
       });
       price = computed || 0;
+    } else if (product && product.type === "tiered" && line.config) {
+      // Prodotto tiered: prendiamo il tier scelto + somma finiture (per pezzo).
+      const tiers = Array.isArray(product.tiers) ? product.tiers : [];
+      const tier = tiers.find((t) => t.qty === line.config.tierQty);
+      if (tier) {
+        price = Number(tier.price) || 0;
+        const finishes = Array.isArray(line.config.finishes) ? line.config.finishes : [];
+        // Valida ogni finitura contro quelle del prodotto, per evitare manomissioni.
+        const productFinishes = Array.isArray(product.finishes) ? product.finishes : [];
+        for (const lf of finishes) {
+          const pf = productFinishes.find((f) => f.id === lf.id);
+          if (pf) price += Number(pf.pricePerPiece) * tier.qty;
+        }
+        price = Number(price.toFixed(2));
+      }
     } else if (product && product.type === "simple") {
       // Prodotto semplice: prezzo base x quantita'.
       const qty = (line.config && line.config.qty) || line.qty || 1;

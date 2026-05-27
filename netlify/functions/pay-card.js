@@ -12,6 +12,7 @@
 
 import Stripe from "stripe";
 import { recomputeCartTotal } from "./_pricing.js";
+import { notifyOrder } from "./_notify.js";
 
 export default async (req) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
@@ -55,6 +56,9 @@ export default async (req) => {
       success_url: origin + "/#/grazie?paid=1&order=" + encodeURIComponent(order.orderId || ""),
       cancel_url: origin + "/#/checkout",
     });
+
+    // Notifica venditore: ordine creato, in attesa di pagamento carta.
+    await notifyOrder({ ...order, total: Number(total.toFixed(2)), paymentMethod: "card", paymentStatus: "in attesa carta" }, "created").catch((e) => console.warn("notify error", e));
 
     return Response.json({ url: session.url });
   } catch (err) {

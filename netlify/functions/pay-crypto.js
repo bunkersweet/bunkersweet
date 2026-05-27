@@ -1,58 +1,93 @@
 // netlify/functions/pay-crypto.js
 // -----------------------------------------------------------
-// Pagamento in CRYPTO tramite NOWPayments (pagina di pagamento ospitata).
-// Flusso: ricalcolo sicuro del totale -> creo una "invoice" su NOWPayments
-// -> restituisco l'URL della pagina dove il cliente paga in crypto.
+// Inizia un pagamento crypto autonomo (senza NOWPayments).
 //
-// VARIABILI D'AMBIENTE necessarie (da impostare in Netlify):
-//   NOWPAYMENTS_API_KEY -> chiave API del tuo account NOWPayments
-//   SITE_URL            -> opzionale, indirizzo del sito
+// Riceve dal frontend: il carrello, l'ordine, la rete scelta (BTC/ETH/USDT_TRC20/SOL).
+// Ricalcola il prezzo lato server (anti-manomissione), converte in crypto via
+// CoinGecko, aggiunge i decimali univoci e salva l'ordine nello store
+// "bunker-sweet-orders" con stato "in attesa". Restituisce al frontend:
+//   { address, amount, symbol, network, expiresAt, orderId }
+//
+// La verifica del pagamento avviene poi su /api/check-crypto.
 // -----------------------------------------------------------
 
+import { getStore } from "@netlify/blobs";
 import { recomputeCartTotal } from "./_pricing.js";
+import { CRYPTO_NETWORKS, getEurPriceOf, normalizeAmount, buildUniqueAmount } from "./_crypto.js";
+import { notifyOrder } from "./_notify.js";
+
+// Durata della "finestra di pagamento": il cliente ha 30 minuti per pagare
+// prima che l'ordine venga marcato come scaduto.
+const PAYMENT_WINDOW_MINUTES = 30;
 
 export default async (req) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
-  const API_KEY = process.env.NOWPAYMENTS_API_KEY;
-  if (!API_KEY) {
-    return Response.json({ error: "NOWPAYMENTS_API_KEY non impostata" }, { status: 500 });
-  }
+  let body;
+  try { body = await req.json(); } catch { return Response.json({ error: "JSON non valido" }, { status: 400 }); }
 
-  const body = await req.json();
   const cart = body.cart || [];
   const order = body.order || {};
+  const networkKey = body.network; // "BTC" | "ETH" | "USDT_TRC20" | "SOL"
 
-  // Ricalcolo sicuro lato server.
-  const { total } = await recomputeCartTotal(cart);
-  if (total <= 0) {
-    return Response.json({ error: "Carrello vuoto o non valido" }, { status: 400 });
-  }
+  // Validazioni di base.
+  const net = CRYPTO_NETWORKS[networkKey];
+  if (!net) return Response.json({ error: "Rete non supportata" }, { status: 400 });
+  if (!order.orderId) return Response.json({ error: "orderId mancante" }, { status: 400 });
 
-  const origin = process.env.SITE_URL || new URL(req.url).origin;
+  // Ricalcolo prezzo SICURO (ignora i prezzi inviati dal browser).
+  const { total: totalEur } = await recomputeCartTotal(cart);
+  if (totalEur <= 0) return Response.json({ error: "Carrello vuoto o non valido" }, { status: 400 });
 
+  // Tasso EUR -> crypto.
+  let cryptoBase;
   try {
-    // Crea una invoice: NOWPayments restituisce un invoice_url ospitato.
-    const resp = await fetch("https://api.nowpayments.io/v1/invoice", {
-      method: "POST",
-      headers: { "x-api-key": API_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        price_amount: total,
-        price_currency: "eur",
-        order_id: order.orderId || "",
-        order_description: "Ordine Bunker Sweet",
-        ipn_callback_url: origin + "/api/webhook-crypto",
-        success_url: origin + "/#/grazie?paid=1&order=" + encodeURIComponent(order.orderId || ""),
-        cancel_url: origin + "/#/checkout",
-      }),
-    });
-
-    const data = await resp.json();
-    if (!resp.ok || !data.invoice_url) {
-      throw new Error(JSON.stringify(data));
-    }
-    return Response.json({ url: data.invoice_url });
-  } catch (err) {
-    return Response.json({ error: String(err) }, { status: 502 });
+    const pricePerUnitEur = await getEurPriceOf(net.coingeckoId);
+    cryptoBase = totalEur / pricePerUnitEur;
+  } catch (e) {
+    return Response.json({ error: "Tasso di cambio non disponibile: " + e.message }, { status: 502 });
   }
+
+  // Importo univoco con decimali residui per riconoscere l'ordine.
+  const uniqueAmount = buildUniqueAmount(networkKey, cryptoBase, order.orderId);
+  const amountStr = normalizeAmount(networkKey, uniqueAmount);
+
+  // Salva l'ordine nello store con i dati del pagamento crypto.
+  const expiresAt = new Date(Date.now() + PAYMENT_WINDOW_MINUTES * 60 * 1000).toISOString();
+  const orderToSave = {
+    ...order,
+    paymentMethod: "crypto",
+    paymentStatus: "in attesa",
+    total: Number(totalEur.toFixed(2)),
+    crypto: {
+      network: networkKey,
+      symbol: net.symbol,
+      networkName: net.name,
+      address: net.address,
+      amount: amountStr,        // stringa con decimali esatti
+      eurAmount: Number(totalEur.toFixed(2)),
+      rate: cryptoBase > 0 ? Number((totalEur / cryptoBase).toFixed(2)) : null, // EUR per 1 unita'
+      decimals: net.decimals,
+      confirmationsRequired: net.confirmations,
+      expiresAt,
+      createdAt: new Date().toISOString(),
+    },
+  };
+
+  const store = getStore({ name: "bunker-sweet-orders", consistency: "strong" });
+  await store.setJSON(order.orderId, orderToSave);
+
+  // Notifica venditore: ordine creato, in attesa di pagamento crypto.
+  await notifyOrder(orderToSave, "created").catch((e) => console.warn("notify error", e));
+
+  return Response.json({
+    orderId: order.orderId,
+    network: networkKey,
+    symbol: net.symbol,
+    networkName: net.name,
+    address: net.address,
+    amount: amountStr,
+    eurAmount: Number(totalEur.toFixed(2)),
+    expiresAt,
+  });
 };

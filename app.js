@@ -87,43 +87,192 @@ const ACCEPTED_FILES = ".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pd
 const ORDER_WEBHOOK_URL = "/api/send-order";
 
 // PIN demo dell'area Admin (SOLO DIMOSTRATIVO, non sicuro per la produzione).
-const ADMIN_PIN = "1234";
+const ADMIN_PIN = "9988";
+
+// Contatti per il pagamento manuale (Bonifico/Cash/Postepay).
+// Modifica questi valori (o lasciali vuoti per nascondere quella riga).
+const MANUAL_CONTACTS = {
+  telegram: "@bunkersweet",       // es. "@iltuonome"
+  signal: "",                      // es. "+39 333 1234567"
+  instagram: "@bunkersweet",      // es. "@iltuonome"
+  whatsapp: "",                    // es. "+39 333 1234567"
+  email: "info@bunkersweet.com",   // es. "info@bunkersweet.com"
+  iban: "",                        // es. "IT60 X054 2811 1010 0000 0123 456"
+  postepay: "",                    // es. "4023 6009 1234 5678"
+};
 
 // Prodotti demo iniziali (caricati al primo avvio se il DB è vuoto).
+// I prodotti "tiered" hanno scaglioni di quantità (qty -> price) e
+// finiture extra opzionali. Le finiture sono "per pezzo" (costano +X € a pezzo).
+// L'admin può modificare tutto questo dall'area Admin senza toccare il codice.
 const SEED_PRODUCTS = [
   {
     id: "stickers",
     name: "Adesivi Personalizzati",
     description: "Adesivi su misura con il tuo logo. Scegli materiale, forma e dimensione: il prezzo si calcola automaticamente.",
     image: null,
-    type: "configurator",      // usa il configuratore speciale
-    configurator: "stickers",  // identifica QUALE configuratore
-    active: true,              // configuratore attivo/disattivo
+    type: "configurator",
+    configurator: "stickers",
+    active: true,
     basePrice: null,
   },
   {
-    id: "biglietti",
+    id: "biglietti-visita",
     name: "Biglietti da Visita",
-    description: "Biglietti professionali con finitura premium. Carica il tuo file e indica le quantità.",
+    description: "Biglietti professionali stampati in alta qualità.",
     image: null,
-    type: "simple",
-    basePrice: 29.9,
+    type: "tiered",
+    leadTime: "3-5 giorni lavorativi",
+    tiers: [
+      { qty: 48, price: 50 },
+      { qty: 96, price: 100 },
+      { qty: 200, price: 200 },
+    ],
+    finishes: [
+      { id: "olografico", name: "Effetto olografico", pricePerPiece: 0.30 },
+      { id: "lucidato", name: "Plastificazione lucida", pricePerPiece: 0.10 },
+      { id: "opaco", name: "Plastificazione opaca", pricePerPiece: 0.10 },
+    ],
   },
   {
-    id: "etichette",
+    id: "volantini-a6",
+    name: "Volantini A6",
+    description: "Volantini A6 a colori, carta 170g.",
+    image: null,
+    type: "tiered",
+    leadTime: "2-4 giorni lavorativi",
+    tiers: [
+      { qty: 100, price: 35 },
+      { qty: 250, price: 65 },
+      { qty: 500, price: 110 },
+      { qty: 1000, price: 180 },
+    ],
+    finishes: [],
+  },
+  {
+    id: "volantini-a5",
+    name: "Volantini A5",
+    description: "Volantini A5 a colori, carta 170g, fronte/retro.",
+    image: null,
+    type: "tiered",
+    leadTime: "2-4 giorni lavorativi",
+    tiers: [
+      { qty: 100, price: 50 },
+      { qty: 250, price: 95 },
+      { qty: 500, price: 160 },
+    ],
+    finishes: [],
+  },
+  {
+    id: "etichette-prodotto",
     name: "Etichette Prodotto",
-    description: "Etichette adesive per i tuoi prodotti, resistenti e dal colore brillante.",
+    description: "Etichette adesive resistenti per i tuoi prodotti.",
     image: null,
-    type: "simple",
-    basePrice: 19.5,
+    type: "tiered",
+    leadTime: "3-5 giorni lavorativi",
+    tiers: [
+      { qty: 100, price: 40 },
+      { qty: 250, price: 80 },
+      { qty: 500, price: 140 },
+    ],
+    finishes: [
+      { id: "lucidato", name: "Laminazione lucida", pricePerPiece: 0.10 },
+      { id: "trasparente", name: "Supporto trasparente", pricePerPiece: 0.15 },
+    ],
   },
   {
-    id: "packaging",
-    name: "Packaging Personalizzato",
-    description: "Scatole e packaging brandizzati per dare valore al tuo prodotto.",
+    id: "packaging-scatole",
+    name: "Packaging — Scatole",
+    description: "Scatole brandizzate per i tuoi prodotti.",
     image: null,
-    type: "simple",
-    basePrice: 89.0,
+    type: "tiered",
+    leadTime: "7-10 giorni lavorativi",
+    tiers: [
+      { qty: 50, price: 120 },
+      { qty: 100, price: 220 },
+      { qty: 250, price: 480 },
+    ],
+    finishes: [
+      { id: "oro", name: "Stampa a caldo oro", pricePerPiece: 0.50 },
+      { id: "rilievo", name: "Effetto rilievo", pricePerPiece: 0.40 },
+    ],
+  },
+  {
+    id: "buste",
+    name: "Buste Personalizzate",
+    description: "Buste con logo per spedizioni e packaging.",
+    image: null,
+    type: "tiered",
+    leadTime: "5-7 giorni lavorativi",
+    tiers: [
+      { qty: 100, price: 60 },
+      { qty: 250, price: 130 },
+      { qty: 500, price: 230 },
+    ],
+    finishes: [],
+  },
+  {
+    id: "menu",
+    name: "Menu / Brochure",
+    description: "Menu, listini e brochure su carta premium.",
+    image: null,
+    type: "tiered",
+    leadTime: "4-6 giorni lavorativi",
+    tiers: [
+      { qty: 25, price: 70 },
+      { qty: 50, price: 120 },
+      { qty: 100, price: 210 },
+    ],
+    finishes: [
+      { id: "plastificato", name: "Plastificazione resistente", pricePerPiece: 0.30 },
+    ],
+  },
+  {
+    id: "poster",
+    name: "Poster / Locandine",
+    description: "Stampe a colori formato grande.",
+    image: null,
+    type: "tiered",
+    leadTime: "2-4 giorni lavorativi",
+    tiers: [
+      { qty: 10, price: 40 },
+      { qty: 25, price: 85 },
+      { qty: 50, price: 150 },
+    ],
+    finishes: [],
+  },
+  {
+    id: "magliette",
+    name: "Magliette Personalizzate",
+    description: "T-shirt con stampa del tuo design.",
+    image: null,
+    type: "tiered",
+    leadTime: "7-10 giorni lavorativi",
+    tiers: [
+      { qty: 10, price: 120 },
+      { qty: 25, price: 270 },
+      { qty: 50, price: 500 },
+    ],
+    finishes: [
+      { id: "ricamo", name: "Aggiunta ricamo", pricePerPiece: 1.50 },
+    ],
+  },
+  {
+    id: "tessere",
+    name: "Tessere / Card Plastica",
+    description: "Tessere PVC formato carta di credito.",
+    image: null,
+    type: "tiered",
+    leadTime: "5-7 giorni lavorativi",
+    tiers: [
+      { qty: 50, price: 90 },
+      { qty: 100, price: 160 },
+      { qty: 250, price: 360 },
+    ],
+    finishes: [
+      { id: "chip", name: "Striscia magnetica", pricePerPiece: 0.40 },
+      { id: "lucido", name: "Finitura lucida", pricePerPiece: 0.10 },
+    ],
   },
 ];
 
@@ -514,10 +663,17 @@ async function renderCatalog() {
   const cards = products
     .map((p) => {
       const isConfig = p.type === "configurator";
+      const isTiered = p.type === "tiered";
       // Se il configuratore è disattivato, mostralo come non disponibile.
       const disabled = isConfig && p.active === false;
+      // Prezzo "Da X €" per i tiered (primo scaglione).
+      const tieredMin = isTiered && Array.isArray(p.tiers) && p.tiers.length
+        ? p.tiers[0].price
+        : null;
       const priceLabel = isConfig
         ? `<span class="price">Da configurare</span>`
+        : isTiered
+        ? `<span class="price">Da ${formatEUR(tieredMin || 0)}</span>`
         : `<span class="price">${formatEUR(p.basePrice)}</span>`;
       const tag = isConfig
         ? `<span class="tag">Configurabile</span>`
@@ -571,7 +727,12 @@ async function renderProduct(id) {
     return renderStickerConfigurator(p);
   }
 
-  // Altrimenti -> prodotto semplice con prezzo base.
+  // Prodotti "tiered" con scaglioni di quantità e finiture extra opzionali.
+  if (p.type === "tiered") {
+    return renderTieredProduct(p);
+  }
+
+  // Fallback (vecchi prodotti "simple", per compatibilità).
   const media = p.image
     ? `<img src="${p.image}" alt="${escapeHtml(p.name)}" />`
     : `<span class="ph">Nessuna immagine</span>`;
@@ -620,11 +781,159 @@ async function renderProduct(id) {
       config: { qty },
       price,
       image: p.image,
-      file: uploadedFile, // { dataUrl, name, type } oppure null
+      file: uploadedFile,
     });
     showToast("Aggiunto al carrello ✓", "success");
     location.hash = "#/cart";
   });
+}
+
+/* ---------- 7.2.b PRODOTTO TIERED (scaglioni + finiture) ---------- */
+async function renderTieredProduct(p) {
+  const tiers = Array.isArray(p.tiers) ? p.tiers : [];
+  const finishes = Array.isArray(p.finishes) ? p.finishes : [];
+  if (tiers.length === 0) {
+    app.innerHTML = `<div class="empty"><div class="ico">⚠️</div><h2>Prodotto non configurato</h2><p class="muted">Nessuno scaglione di quantità definito.</p><a class="btn btn-primary spaced" href="#/" data-link>Torna al catalogo</a></div>`;
+    return;
+  }
+
+  const media = p.image
+    ? `<img src="${p.image}" alt="${escapeHtml(p.name)}" />`
+    : `<span class="ph">Nessuna immagine</span>`;
+
+  // Chip degli scaglioni quantità.
+  const tierChips = tiers
+    .map(
+      (t, i) => `
+    <label class="choice ${i === 0 ? "selected" : ""}" data-tier="${i}">
+      <input type="radio" name="tier" value="${i}" ${i === 0 ? "checked" : ""}>
+      <div class="ttl">${t.qty} pezzi</div>
+      <div class="sub">${formatEUR(t.price)}</div>
+    </label>`
+    )
+    .join("");
+
+  // Casella finiture extra (se previste).
+  const finishesHtml = finishes.length
+    ? `<div class="panel">
+        <h2>Finiture extra (opzionali)</h2>
+        ${finishes
+          .map(
+            (f, i) => `
+          <label class="choice" data-finish="${f.id}" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span>
+              <input type="checkbox" data-finish-cb="${f.id}" style="margin-right:8px">
+              ${escapeHtml(f.name)}
+            </span>
+            <span class="muted">+ ${formatEUR(f.pricePerPiece)}/pz</span>
+          </label>`
+          )
+          .join("")}
+      </div>`
+    : "";
+
+  app.innerHTML = `
+    <a class="back-link" href="#/" data-link>← Torna al catalogo</a>
+    <div class="detail">
+      <div class="detail-media">${media}</div>
+      <div>
+        <span class="kicker">Prodotto</span>
+        <h1>${escapeHtml(p.name)}</h1>
+        <p class="lead">${escapeHtml(p.description || "")}</p>
+        ${p.leadTime ? `<p class="note">⏱ Tempi di preparazione: <b>${escapeHtml(p.leadTime)}</b></p>` : ""}
+
+        <div class="panel">
+          <h2>Quantità</h2>
+          <div class="choice-grid">${tierChips}</div>
+        </div>
+
+        ${finishesHtml}
+
+        <div class="panel">
+          <h2>Il tuo file</h2>
+          <div class="field">
+            <label>Carica il tuo logo / file (PNG, JPG, PDF)</label>
+            ${uploaderHtml()}
+          </div>
+        </div>
+
+        <div class="price-box">
+          <div>
+            <div class="lab">Prezzo totale</div>
+            <div class="val" id="tiered-price">—</div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="add-tiered">Aggiungi al carrello</button>
+      </div>
+    </div>
+  `;
+
+  // Stato configurazione.
+  const state = { tierIndex: 0, finishes: {}, file: null };
+
+  function recompute() {
+    const tier = tiers[state.tierIndex];
+    let total = tier.price;
+    const activeFinishes = [];
+    finishes.forEach((f) => {
+      if (state.finishes[f.id]) {
+        total += f.pricePerPiece * tier.qty;
+        activeFinishes.push(f);
+      }
+    });
+    $("#tiered-price").textContent = formatEUR(total);
+    return { tier, total: Number(total.toFixed(2)), activeFinishes };
+  }
+
+  // Eventi: scaglioni.
+  app.querySelectorAll(".choice-grid .choice[data-tier]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      app.querySelectorAll(".choice-grid .choice[data-tier]").forEach((c) => c.classList.remove("selected"));
+      chip.classList.add("selected");
+      chip.querySelector("input").checked = true;
+      state.tierIndex = parseInt(chip.dataset.tier, 10) || 0;
+      recompute();
+    });
+  });
+
+  // Eventi: finiture (checkbox).
+  app.querySelectorAll("[data-finish-cb]").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      state.finishes[cb.dataset.finishCb] = cb.checked;
+      recompute();
+    });
+  });
+
+  // Upload file.
+  bindUploader((fileData) => (state.file = fileData));
+
+  // Aggiungi al carrello.
+  $("#add-tiered").addEventListener("click", async () => {
+    const r = recompute();
+    const finishLabel = r.activeFinishes.length
+      ? " + " + r.activeFinishes.map((f) => f.name).join(", ")
+      : "";
+    await addToCart({
+      lineId: uid("line"),
+      productId: p.id,
+      name: p.name,
+      qty: r.tier.qty,
+      configLabel: `${r.tier.qty} pezzi${finishLabel}`,
+      config: {
+        tierQty: r.tier.qty,
+        tierPrice: r.tier.price,
+        finishes: r.activeFinishes.map((f) => ({ id: f.id, name: f.name, pricePerPiece: f.pricePerPiece })),
+      },
+      price: r.total,
+      image: p.image,
+      file: state.file,
+    });
+    showToast("Aggiunto al carrello ✓", "success");
+    location.hash = "#/cart";
+  });
+
+  recompute();
 }
 
 /* ---------- 7.3 CONFIGURATORE ADESIVI ---------- */
@@ -986,18 +1295,44 @@ async function renderCheckout() {
     <p class="muted center spaced">Scegli come pagare:</p>
     <div class="btn-row" style="flex-direction:column">
       <button class="btn btn-primary" id="pay-card">💳 Paga con carta</button>
-      <button class="btn btn-green" id="pay-crypto">🪙 Paga con crypto</button>
+      <button class="btn" id="pay-manual">🏦 Bonifico / Cash / Postepay</button>
     </div>
+
+    <hr class="divider">
+    <p class="muted center" style="margin-bottom:10px">Oppure paga in crypto:</p>
+    <div class="choice-grid" id="crypto-net-grid">
+      <label class="choice" data-net="BTC"><input type="radio" name="cryptonet" value="BTC"><div class="ttl">Bitcoin</div><div class="sub">BTC</div></label>
+      <label class="choice" data-net="ETH"><input type="radio" name="cryptonet" value="ETH"><div class="ttl">Ethereum</div><div class="sub">ETH</div></label>
+      <label class="choice" data-net="USDT_TRC20"><input type="radio" name="cryptonet" value="USDT_TRC20"><div class="ttl">USDT (TRON)</div><div class="sub">TRC20 · stable</div></label>
+      <label class="choice" data-net="SOL"><input type="radio" name="cryptonet" value="SOL"><div class="ttl">Solana</div><div class="sub">SOL</div></label>
+    </div>
+    <button class="btn btn-green spaced" id="pay-crypto" disabled>🪙 Paga in crypto</button>
     <p class="note center">Verrai indirizzato a una pagina di pagamento sicura. Il tuo ordine viene salvato prima del pagamento.</p>
   `;
 
+  // Selettore rete crypto.
+  let selectedNet = null;
+  app.querySelectorAll("#crypto-net-grid .choice").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      app.querySelectorAll("#crypto-net-grid .choice").forEach((c) => c.classList.remove("selected"));
+      chip.classList.add("selected");
+      chip.querySelector("input").checked = true;
+      selectedNet = chip.dataset.net;
+      $("#pay-crypto").disabled = false;
+    });
+  });
+
   $("#pay-card").addEventListener("click", () => submitOrder("card"));
-  $("#pay-crypto").addEventListener("click", () => submitOrder("crypto"));
+  $("#pay-manual").addEventListener("click", () => submitOrder("manual"));
+  $("#pay-crypto").addEventListener("click", () => {
+    if (!selectedNet) { showToast("Scegli una rete crypto.", "error"); return; }
+    submitOrder("crypto", selectedNet);
+  });
 }
 
 // Raccoglie i dati, salva l'ordine, e avvia il pagamento scelto.
-// method: "card" | "crypto"
-async function submitOrder(method) {
+// method: "card" | "crypto"; cryptoNetwork: "BTC" | "ETH" | "USDT_TRC20" | "SOL"
+async function submitOrder(method, cryptoNetwork) {
   const name = $("#ck-name").value.trim();
   const phone = $("#ck-phone").value.trim();
   const email = $("#ck-email").value.trim();
@@ -1047,30 +1382,58 @@ async function submitOrder(method) {
   await DB.addOrder(orderData);
   console.log("===== ORDINE CREATO =====", orderData);
 
+  // PAGAMENTO MANUALE (bonifico/cash/postepay): nessuna API di pagamento,
+  // mostra una pagina con i contatti e il riepilogo. Invia la notifica al venditore.
+  if (method === "manual") {
+    orderData.paymentStatus = "in attesa (manuale)";
+    await DB.addOrder(orderData); // riaggiorna stato
+    await DB.saveCart([]);
+    await refreshCartCount();
+    // Notifica server (Telegram + email): non blocca se non configurato.
+    fetch("/api/notify-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(orderData),
+    }).catch(() => {});
+    sessionStorage.setItem("pcs_manual_order", JSON.stringify(orderData));
+    location.hash = "#/manuale";
+    return;
+  }
+
   // Avvia il pagamento sul server.
   const endpoint = method === "card" ? "/api/pay-card" : "/api/pay-crypto";
+  const payload = { cart, order: orderData };
+  if (method === "crypto") payload.network = cryptoNetwork;
+
   try {
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cart, order: orderData }),
+      body: JSON.stringify(payload),
     });
 
     if (res.ok) {
       const data = await res.json();
+      // CARTA: data.url -> Stripe Checkout
       if (data.url) {
-        // Svuota il carrello e vai alla pagina di pagamento sicura.
         await DB.saveCart([]);
         await refreshCartCount();
         window.location.href = data.url;
         return;
       }
+      // CRYPTO: data.address + data.amount -> pagina interna "Paga in crypto"
+      if (data.address && data.amount) {
+        await DB.saveCart([]);
+        await refreshCartCount();
+        // Salva i dati di pagamento per la pagina e vai.
+        sessionStorage.setItem("pcs_crypto_pay", JSON.stringify(data));
+        location.hash = "#/crypto-pay?order=" + encodeURIComponent(data.orderId);
+        return;
+      }
     }
-    // Se arriviamo qui, il pagamento non è configurato/disponibile.
     throw new Error("Pagamento non disponibile");
   } catch (err) {
     console.warn("Pagamento non disponibile, uso il fallback ordine.", err);
-    // FALLBACK: nessun pagamento collegato ancora -> salva e conferma.
     await DB.saveCart([]);
     await refreshCartCount();
     if (activeBtn) activeBtn.textContent = originalText;
@@ -1090,6 +1453,224 @@ function showOrderConfirm(message, orderId) {
       <p class="muted">Riferimento ordine: <b>${escapeHtml(orderId)}</b></p>
       <a class="btn btn-primary spaced" href="#/" data-link style="max-width:260px;margin:18px auto 0">Torna al catalogo</a>
     </div>`;
+}
+
+// Pagina "Pagamento manuale": mostra i contatti per concordare pagamento
+// (bonifico/cash/postepay) e un riepilogo dell'ordine già pronto da copiare.
+function renderManualPay() {
+  let order = null;
+  try { order = JSON.parse(sessionStorage.getItem("pcs_manual_order") || "null"); } catch {}
+  if (!order) {
+    app.innerHTML = `<div class="empty"><div class="ico">⚠️</div><h2>Sessione scaduta</h2><a class="btn btn-primary spaced" href="#/" data-link style="max-width:260px;margin:18px auto 0">Torna al catalogo</a></div>`;
+    return;
+  }
+
+  // Costruisce un riepilogo testuale dell'ordine, pronto da incollare.
+  const lines = order.items.map((i) => `• ${i.name} — ${i.configLabel} — ${formatEUR(i.price)}`).join("\n");
+  const recap =
+`Ordine: ${order.orderId}
+${order.customer.name} — ${order.customer.phone} — ${order.customer.email}
+
+${lines}
+
+TOTALE: ${formatEUR(order.total)}`;
+
+  // Costruisce le righe contatti solo se valorizzate.
+  const C = MANUAL_CONTACTS;
+  const rows = [
+    C.telegram && { label: "Telegram", value: C.telegram, link: "https://t.me/" + C.telegram.replace(/^@/, "") },
+    C.signal && { label: "Signal", value: C.signal },
+    C.whatsapp && { label: "WhatsApp", value: C.whatsapp, link: "https://wa.me/" + C.whatsapp.replace(/\D/g, "") },
+    C.instagram && { label: "Instagram", value: C.instagram, link: "https://instagram.com/" + C.instagram.replace(/^@/, "") },
+    C.email && { label: "Email", value: C.email, link: "mailto:" + C.email },
+    C.iban && { label: "IBAN (bonifico)", value: C.iban },
+    C.postepay && { label: "Postepay", value: C.postepay },
+  ].filter(Boolean);
+
+  const contactsHtml = rows
+    .map(
+      (r) => `
+    <div class="cart-item" style="grid-template-columns:1fr auto">
+      <div>
+        <div class="ar-meta">${escapeHtml(r.label)}</div>
+        ${r.link
+          ? `<a href="${r.link}" target="_blank" rel="noopener" style="color:var(--gold);font-weight:600;word-break:break-all">${escapeHtml(r.value)}</a>`
+          : `<div style="font-weight:600;word-break:break-all">${escapeHtml(r.value)}</div>`}
+      </div>
+      <button class="btn btn-sm" data-copy="${escapeHtml(r.value)}">Copia</button>
+    </div>`
+    )
+    .join("");
+
+  app.innerHTML = `
+    <div class="page-head">
+      <span class="kicker">Pagamento manuale</span>
+      <h1>Ordine ricevuto ✓</h1>
+      <p>Per completare l'ordine contattaci tramite uno dei canali qui sotto. Ti risponderemo per concordare il pagamento (bonifico, contanti o Postepay).</p>
+    </div>
+
+    <div class="panel">
+      <h2>I nostri contatti</h2>
+      ${contactsHtml || `<p class="muted">Nessun contatto configurato.</p>`}
+    </div>
+
+    <div class="panel">
+      <h2>Riepilogo del tuo ordine</h2>
+      <p class="muted">Copia il testo e mandacelo via Telegram / WhatsApp / Email.</p>
+      <textarea id="manual-recap" readonly style="min-height:150px;font-family:monospace;font-size:13px">${escapeHtml(recap)}</textarea>
+      <div class="btn-row spaced">
+        <button class="btn btn-primary btn-sm" id="manual-copy">Copia riepilogo</button>
+        <a class="btn btn-sm" href="#/" data-link>Torna al catalogo</a>
+      </div>
+    </div>
+
+    <p class="muted center">Riferimento ordine: <b>${escapeHtml(order.orderId)}</b></p>
+  `;
+
+  // Eventi copia.
+  app.querySelectorAll("[data-copy]").forEach((b) => {
+    b.addEventListener("click", () => {
+      navigator.clipboard?.writeText(b.dataset.copy);
+      showToast("Copiato ✓", "success");
+    });
+  });
+  $("#manual-copy").addEventListener("click", () => {
+    const ta = $("#manual-recap");
+    ta.select();
+    navigator.clipboard?.writeText(ta.value);
+    showToast("Riepilogo copiato ✓", "success");
+  });
+}
+
+// Pagina "Paga in crypto": mostra indirizzo, importo, QR code, countdown e
+// pulsante "Ho pagato" per verificare il pagamento sulla blockchain.
+async function renderCryptoPay() {
+  // Recupera i dati del pagamento (salvati in sessionStorage da submitOrder).
+  let pay = null;
+  try { pay = JSON.parse(sessionStorage.getItem("pcs_crypto_pay") || "null"); } catch {}
+  if (!pay || !pay.address || !pay.amount) {
+    app.innerHTML = `<div class="empty"><div class="ico">⚠️</div><h2>Sessione di pagamento scaduta</h2><a class="btn btn-primary spaced" href="#/cart" data-link style="max-width:260px;margin:18px auto 0">Torna al carrello</a></div>`;
+    return;
+  }
+
+  // QR payload: per BTC usiamo lo schema "bitcoin:address?amount=", per gli
+  // altri mostriamo l'indirizzo puro (i wallet capiscono in base alla rete).
+  let qrPayload = pay.address;
+  if (pay.network === "BTC") qrPayload = `bitcoin:${pay.address}?amount=${pay.amount}`;
+  if (pay.network === "ETH") qrPayload = `ethereum:${pay.address}?value=${pay.amount}`;
+
+  // QR generato lato client tramite servizio pubblico (immagine PNG).
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=2&data=${encodeURIComponent(qrPayload)}`;
+
+  app.innerHTML = `
+    <a class="back-link" href="#/checkout" data-link>← Torna al checkout</a>
+    <div class="page-head">
+      <span class="kicker">Pagamento crypto</span>
+      <h1>Paga in ${escapeHtml(pay.networkName)}</h1>
+      <p>Manda <b>esattamente</b> l'importo indicato all'indirizzo qui sotto. Sarà riconosciuto automaticamente.</p>
+    </div>
+
+    <div class="panel center">
+      <img src="${qrUrl}" alt="QR pagamento" style="width:260px;max-width:100%;border-radius:14px;background:#fff;padding:10px" />
+    </div>
+
+    <div class="panel">
+      <div class="field">
+        <label>Importo da inviare (${escapeHtml(pay.symbol)})</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="cp-amount" type="text" value="${escapeHtml(pay.amount)}" readonly style="font-family:monospace;font-size:18px" />
+          <button class="btn btn-sm" id="cp-copy-amount">Copia</button>
+        </div>
+        <p class="note">Equivalente: € ${Number(pay.eurAmount).toFixed(2)}</p>
+      </div>
+
+      <div class="field">
+        <label>Indirizzo (rete ${escapeHtml(pay.networkName)})</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="cp-address" type="text" value="${escapeHtml(pay.address)}" readonly style="font-family:monospace;font-size:13px;word-break:break-all" />
+          <button class="btn btn-sm" id="cp-copy-addr">Copia</button>
+        </div>
+      </div>
+
+      <p class="note" style="color:var(--danger)">⚠️ Manda solo ${escapeHtml(pay.symbol)} su rete ${escapeHtml(pay.networkName)}. Reti diverse = fondi persi.</p>
+    </div>
+
+    <div class="price-box">
+      <div>
+        <div class="lab">Tempo residuo</div>
+        <div class="val" id="cp-countdown" style="font-family:monospace">--:--</div>
+      </div>
+      <div class="tag" id="cp-status">In attesa</div>
+    </div>
+
+    <button class="btn btn-primary" id="cp-check">Ho pagato, verifica ora</button>
+    <p class="note center">La verifica automatica avviene anche ogni minuto. Per BTC e altre reti, le conferme possono richiedere alcuni minuti.</p>
+  `;
+
+  // Copia negli appunti.
+  $("#cp-copy-amount").addEventListener("click", () => {
+    navigator.clipboard?.writeText(pay.amount);
+    showToast("Importo copiato", "success");
+  });
+  $("#cp-copy-addr").addEventListener("click", () => {
+    navigator.clipboard?.writeText(pay.address);
+    showToast("Indirizzo copiato", "success");
+  });
+
+  // Countdown alla scadenza.
+  const expiresAt = new Date(pay.expiresAt).getTime();
+  function tick() {
+    const ms = expiresAt - Date.now();
+    if (ms <= 0) {
+      $("#cp-countdown").textContent = "Scaduto";
+      $("#cp-status").textContent = "Scaduto";
+      clearInterval(timerId);
+      return;
+    }
+    const min = Math.floor(ms / 60000);
+    const sec = Math.floor((ms % 60000) / 1000);
+    $("#cp-countdown").textContent = `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  }
+  tick();
+  const timerId = setInterval(tick, 1000);
+
+  // Pulsante "Ho pagato": chiama check-crypto per quest'ordine.
+  let polling = null;
+  async function verifyNow() {
+    const btn = $("#cp-check");
+    const status = $("#cp-status");
+    btn.disabled = true;
+    btn.textContent = "Verifica in corso...";
+    status.textContent = "Verifica in corso";
+    try {
+      const res = await fetch("/api/check-crypto?orderId=" + encodeURIComponent(pay.orderId));
+      const data = await res.json();
+      if (data.paid) {
+        clearInterval(timerId);
+        if (polling) clearInterval(polling);
+        sessionStorage.removeItem("pcs_crypto_pay");
+        location.hash = "#/grazie?paid=1&order=" + encodeURIComponent(pay.orderId);
+      } else if (data.expired) {
+        status.textContent = "Scaduto";
+        btn.textContent = "Pagamento scaduto";
+      } else {
+        status.textContent = "Non ancora visto";
+        btn.disabled = false;
+        btn.textContent = "Ho pagato, verifica ora";
+      }
+    } catch (e) {
+      status.textContent = "Errore verifica";
+      btn.disabled = false;
+      btn.textContent = "Riprova";
+    }
+  }
+  $("#cp-check").addEventListener("click", verifyNow);
+
+  // Polling automatico ogni 30 sec finche' restiamo sulla pagina.
+  polling = setInterval(() => {
+    if (location.hash.startsWith("#/crypto-pay")) verifyNow();
+    else clearInterval(polling);
+  }, 30000);
 }
 
 // Pagina di ritorno dopo il pagamento (success_url delle funzioni di pagamento).
@@ -1447,6 +2028,12 @@ async function router() {
       break;
     case "checkout":
       await renderCheckout();
+      break;
+    case "crypto-pay":
+      await renderCryptoPay();
+      break;
+    case "manuale":
+      renderManualPay();
       break;
     case "grazie":
       renderThankYou();
