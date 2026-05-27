@@ -87,7 +87,7 @@ const ACCEPTED_FILES = ".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pd
 const ORDER_WEBHOOK_URL = "/api/send-order";
 
 // PIN demo dell'area Admin (SOLO DIMOSTRATIVO, non sicuro per la produzione).
-const ADMIN_PIN = "1234";
+const ADMIN_PIN = "9988";
 
 // Prodotti demo iniziali (caricati al primo avvio se il DB è vuoto).
 const SEED_PRODUCTS = [
@@ -125,6 +125,16 @@ const SEED_PRODUCTS = [
     type: "simple",
     basePrice: 89.0,
   },
+  { id: "custom_01", name: "Prodotto Personalizzabile 1", description: "", image: null, type: "simple", basePrice: 0 },
+  { id: "custom_02", name: "Prodotto Personalizzabile 2", description: "", image: null, type: "simple", basePrice: 0 },
+  { id: "custom_03", name: "Prodotto Personalizzabile 3", description: "", image: null, type: "simple", basePrice: 0 },
+  { id: "custom_04", name: "Prodotto Personalizzabile 4", description: "", image: null, type: "simple", basePrice: 0 },
+  { id: "custom_05", name: "Prodotto Personalizzabile 5", description: "", image: null, type: "simple", basePrice: 0 },
+  { id: "custom_06", name: "Prodotto Personalizzabile 6", description: "", image: null, type: "simple", basePrice: 0 },
+  { id: "custom_07", name: "Prodotto Personalizzabile 7", description: "", image: null, type: "simple", basePrice: 0 },
+  { id: "custom_08", name: "Prodotto Personalizzabile 8", description: "", image: null, type: "simple", basePrice: 0 },
+  { id: "custom_09", name: "Prodotto Personalizzabile 9", description: "", image: null, type: "simple", basePrice: 0 },
+  { id: "custom_10", name: "Prodotto Personalizzabile 10", description: "", image: null, type: "simple", basePrice: 0 },
 ];
 
 
@@ -635,7 +645,6 @@ async function renderStickerConfigurator(p) {
     <label class="choice ${i === 0 ? "selected" : ""}" data-type="${t.id}">
       <input type="radio" name="stype" value="${t.id}" ${i === 0 ? "checked" : ""}>
       <div class="ttl">${escapeHtml(t.name)}</div>
-      <div class="sub">${t.pricePerMeter}€ / metro</div>
     </label>`
   ).join("");
 
@@ -941,19 +950,19 @@ async function renderCheckout() {
 
     <div class="panel">
       <div class="field">
-        <label for="ck-name">Nome e cognome *</label>
+        <label for="ck-name">Nome e cognome</label>
         <input id="ck-name" type="text" placeholder="Mario Rossi" />
       </div>
       <div class="field">
-        <label for="ck-phone">Telefono *</label>
+        <label for="ck-phone">Telefono</label>
         <input id="ck-phone" type="tel" placeholder="+39 ..." />
       </div>
       <div class="field">
-        <label for="ck-email">Email *</label>
+        <label for="ck-email">Email</label>
         <input id="ck-email" type="email" placeholder="email@esempio.it" />
       </div>
       <div class="field">
-        <label for="ck-address">Indirizzo o note di consegna *</label>
+        <label for="ck-address">Indirizzo o note di consegna</label>
         <textarea id="ck-address" placeholder="Via, città, CAP..."></textarea>
       </div>
 
@@ -1007,18 +1016,23 @@ async function submitOrder(method) {
   const signal = $("#ck-signal").value.trim();
   const notes = $("#ck-notes").value.trim();
 
-  // Validazione minima.
-  if (!name || !phone || !email || !address) {
-    showToast("Compila i campi obbligatori (*).", "error");
-    return;
-  }
-
   const cart = await DB.getCart();
   const total = await cartTotal();
 
-  // Oggetto ordine completo.
+  // Richiedi numero ordine sequenziale dal server.
+  let orderNumber = uid("order");
+  try {
+    const numRes = await fetch("/api/order-number", { method: "POST" });
+    if (numRes.ok) {
+      const numData = await numRes.json();
+      orderNumber = numData.orderNumber;
+    }
+  } catch (e) {
+    console.warn("Numero sequenziale non disponibile, uso fallback.", e);
+  }
+
   const orderData = {
-    orderId: uid("order"),
+    orderId: orderNumber,
     createdAt: new Date().toISOString(),
     paymentMethod: method,
     paymentStatus: "in attesa",
@@ -1082,31 +1096,55 @@ async function submitOrder(method) {
 }
 
 function showOrderConfirm(message, orderId) {
-  app.innerHTML = `
-    <div class="empty">
-      <div class="ico">✅</div>
-      <h2>Grazie!</h2>
-      <p class="muted">${escapeHtml(message)}</p>
-      <p class="muted">Riferimento ordine: <b>${escapeHtml(orderId)}</b></p>
-      <a class="btn btn-primary spaced" href="#/" data-link style="max-width:260px;margin:18px auto 0">Torna al catalogo</a>
-    </div>`;
+  location.hash = "#/grazie?paid=0&order=" + encodeURIComponent(orderId);
 }
 
 // Pagina di ritorno dopo il pagamento (success_url delle funzioni di pagamento).
 function renderThankYou() {
-  // Legge i parametri dall'hash, es. #/grazie?paid=1&order=order_xxx
   const q = (location.hash.split("?")[1] || "");
   const params = new URLSearchParams(q);
   const paid = params.get("paid") === "1";
-  const order = params.get("order") || "";
+  const orderId = params.get("order") || "";
+
   app.innerHTML = `
-    <div class="empty">
-      <div class="ico">${paid ? "🎉" : "✅"}</div>
-      <h2>${paid ? "Pagamento ricevuto!" : "Grazie!"}</h2>
-      <p class="muted">${paid ? "Il tuo ordine è confermato. Ti contatteremo per i dettagli." : "Ordine registrato."}</p>
-      ${order ? `<p class="muted">Riferimento ordine: <b>${escapeHtml(order)}</b></p>` : ""}
+    <div class="empty thankyou-page">
+      <div class="thankyou-graphic">
+        <div class="thankyou-circle">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+            <circle cx="40" cy="40" r="38" stroke="#c9a227" stroke-width="3" fill="none"/>
+            <path d="M24 42 L34 52 L56 30" stroke="#c9a227" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </div>
+      </div>
+      <h1 class="thankyou-title">Grazie per il tuo ordine!</h1>
+      ${orderId ? `<p class="thankyou-order">Numero ordine: <b>${escapeHtml(orderId)}</b></p>` : ""}
+      <p class="muted thankyou-msg">${paid ? "Il pagamento è stato ricevuto con successo. Ti contatteremo per i dettagli della consegna." : "Ordine registrato. Ti contatteremo per completare il pagamento e la consegna."}</p>
+      <div id="thankyou-email-status"></div>
       <a class="btn btn-primary spaced" href="#/" data-link style="max-width:260px;margin:18px auto 0">Torna al catalogo</a>
     </div>`;
+
+  if (orderId) {
+    sendOrderEmail(orderId);
+  }
+}
+
+async function sendOrderEmail(orderId) {
+  const statusEl = $("#thankyou-email-status");
+  try {
+    const res = await fetch("/api/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.sent) {
+        statusEl.innerHTML = `<p class="muted" style="color:#6ec87a">✓ Una copia dell'ordine è stata inviata alla tua email.</p>`;
+      }
+    }
+  } catch (e) {
+    console.warn("Invio email non riuscito:", e);
+  }
 }
 
 /* ---------- 7.6 ADMIN ---------- */
@@ -1186,7 +1224,7 @@ function renderAdminPin() {
     <div class="pin-wrap">
       <div class="ico" style="font-size:42px">🔒</div>
       <h2>Area Admin</h2>
-      <p class="muted">Inserisci il PIN (demo: 1234)</p>
+      <p class="muted">Inserisci il PIN per accedere</p>
       <div class="field spaced">
         <input id="pin-input" type="password" inputmode="numeric" maxlength="8" placeholder="••••" style="text-align:center;font-size:22px;letter-spacing:6px" />
       </div>
@@ -1336,7 +1374,7 @@ async function showOrdersModal() {
             .join("");
           return `
             <div class="panel">
-              <h3 style="font-size:15px">${escapeHtml(o.customer.name)} — ${formatEUR(o.total)}</h3>
+              <h3 style="font-size:15px">${escapeHtml(o.orderId || "")} — ${escapeHtml(o.customer.name || "Anonimo")} — ${formatEUR(o.total)}</h3>
               <div class="ar-meta">
                 ${o.paymentStatus === "pagato"
                   ? '<span class="tag green">✓ Pagato</span>'

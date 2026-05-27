@@ -25,6 +25,7 @@ export default async (req) => {
     const { blobs } = await store.list();
     const orders = [];
     for (const b of blobs) {
+      if (b.key.startsWith("_")) continue;
       const o = await store.get(b.key, { type: "json" });
       if (o) orders.push(o);
     }
