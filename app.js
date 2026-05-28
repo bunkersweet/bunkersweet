@@ -18,6 +18,11 @@
 
 "use strict";
 
+// VERSIONE APP: serve per verificare quale versione è realmente online.
+// Apri la console del browser: se vedi questo numero, stai usando questa versione.
+const APP_VERSION = "2026.05-v11";
+console.log("%cBunker Sweet — versione app: " + APP_VERSION, "color:#c9a227;font-weight:bold");
+
 /* =============================================================
    SHIM STORAGE — localStorage con fallback in memoria
    -------------------------------------------------------------
